@@ -1,13 +1,43 @@
-# Compiled Object files
-*.slo
-*.lo
-*.o
+*.pydevproject
+.project
+.metadata
+bin/**
+tmp/**
+tmp/**/*
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.classpath
+.settings/
+.loadpath
 
-# Compiled Dynamic libraries
+# External tool builders
+.externalToolBuilders/
+
+# CDT-specific
+.cproject
+
+# PDT-specific
+.buildpath
+
+.cproject
+*.pyc
 *.so
-*.dylib
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
+bin/
+build/
+.vim
+.clang_complete
+.metadata
+*.*~
+*~
+msg_gen
+srv_gen
+*.cfgc
+CMakeFiles
+CMakeCache.txt
+stack.xml.bak
+*.aux
+*.log
+*.toc

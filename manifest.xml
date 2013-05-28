@@ -1,0 +1,17 @@
+<package>
+  <description brief="hbrs_cartesian_trajectory_controller">
+
+     hbrs_cartesian_trajectory_controller
+
+  </description>
+  <author>Matthew Roscoe</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/hbrs_cartesian_trajectory_controller</url>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="std_srvs"/>
+
+  <depend package="hbrs_msgs"/>  
+  <depend package="hbrs_srvs"/>
+</package>
