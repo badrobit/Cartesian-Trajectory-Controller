@@ -36,6 +36,8 @@
 #include <hbrs_srvs/ComputeTrajectory.h>
 // hbrs_srvs/srv/ComputeTrajectory.srv
 #include <hbrs_srvs/ExecuteTrajectory.h>
+#include <geometry_msgs/PoseStamped.h>
+ #include <geometry_msgs/TwistStamped.h>
 
 class CartesianTrajectoryController
 {
@@ -75,12 +77,14 @@ private:
 							hbrs_srvs::ExecuteTrajectory::Response &res );
 
 	/**
-	 * This is a simpel trajectory calculator that will take in a start and an end point and split
+	 * This is a simple trajectory calculator that will take in a start and an end point and split
 	 * it up in a way where we are able to leverage the youBot Cartesian Controller to move the arm
 	 * along the line by splitting up the line into small enough portions that we are able to
 	 * smoothly move along the line.
 	 */
-	void ComputeTrajectorySimple();
+
+	void ComputeTrajectorySimple( hbrs_srvs::ComputeTrajectory::Request &req,
+								hbrs_srvs::ComputeTrajectory::Response &res );
 
 	/**
 	 * TBD.
@@ -97,6 +101,10 @@ protected:
 
 	ros::ServiceServer 			m_compute_trajectory_service;
 	ros::ServiceServer			m_execute_trajectory_service;
+
+	geometry_msgs::PoseStamped	m_current_gripper_pose;
+	geometry_msgs::TwistStamped	m_direction_vec;
+
 };
 
 #endif /* CARTESIANTRAJECTORYCONTROLLER_H_ */

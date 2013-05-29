@@ -52,7 +52,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 	else
 	{
 		ROS_WARN( "Using simplified solver for trajectory calculations" );
-		ComputeTrajectorySimple();
+		ComputeTrajectorySimple(req, res);
 	}
 }
 
@@ -60,6 +60,7 @@ void
 CartesianTrajectoryController::ExecuteTrajectory( hbrs_srvs::ExecuteTrajectory::Request &req,
 												  hbrs_srvs::ExecuteTrajectory::Response &res )
 {
+
 
 }
 
@@ -70,9 +71,17 @@ CartesianTrajectoryController::ShutDown()
 }
 
 void
-CartesianTrajectoryController::ComputeTrajectorySimple()
+CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajectory::Request &req,
+												  		hbrs_srvs::ComputeTrajectory::Response &res )
 {
+	//Get all future path nodes
+	geometry_msgs::PoseStamped next_pose = req.way_point_list.pose[0];	//Compute Direction Vector
 
+	m_direction_vec.twist.linear.x = (next_pose.pose.position.x - m_current_gripper_pose.pose.position.x);
+	m_direction_vec.twist.linear.y = (next_pose.pose.position.y - m_current_gripper_pose.pose.position.y);
+	m_direction_vec.twist.linear.z = (next_pose.pose.position.z - m_current_gripper_pose.pose.position.z);
+
+	res.output_value.output_code = hbrs_msgs::CartesianTrajectoryController::SUCCESS;
 }
 
 void
