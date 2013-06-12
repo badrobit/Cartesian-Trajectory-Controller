@@ -31,14 +31,16 @@
 
 CartesianTrajectoryController::CartesianTrajectoryController( ros::NodeHandle i_node_handle ): m_node_handler( i_node_handle )
 {
-	m_compute_trajectory_service =
-			m_node_handler.advertiseService( "compute_trajectory", &CartesianTrajectoryController::ComputeTrajectory, this );
-
 	m_sub_joint_states = m_node_handler.subscribe( "/joint_states", 1, &CartesianTrajectoryController::JointStateCallback, this );
-	ROS_DEBUG( "Subscribed to the Joint States publication." );
+	ROS_INFO( "Subscribed to the Joint States publication." );
 
-	m_youbot_arm_velocity_publisher =
-			m_node_handler.advertise<geometry_msgs::Twist>( "/arm_controller/cartesian_velocity_command", 1 );
+	m_youbot_arm_velocity_publisher = m_node_handler.advertise<brics_actuator::JointVelocities>("/arm_controller/velocity_command", 1);
+	ROS_INFO( "Started publishing Arm Velocity Commands" );
+
+	m_compute_trajectory_service = m_node_handler.advertiseService( "compute_trajectory", &CartesianTrajectoryController::ComputeTrajectory, this );
+	ROS_INFO( "Advertised Compute Trajectory Server." );
+
+	SetupYoubotArm();
 }
 
 CartesianTrajectoryController::~CartesianTrajectoryController()
@@ -49,18 +51,20 @@ bool
 CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::Request &req,
 												  hbrs_srvs::ComputeTrajectory::Response &res )
 {
+	bool return_value = false;
+
 	if( req.use_ik_solver )
 	{
 		ROS_WARN( "Using inverse kinematics for trajectory calculations" );
-		ComputeTrajectoryIK();
+		return_value = ComputeTrajectoryIK();
 	}
 	else
 	{
 		ROS_WARN( "Using simplified solver for trajectory calculations" );
-		ComputeTrajectorySimple(req, res);
+		return_value = ComputeTrajectorySimple(req, res);
 	}
 
-	return false;
+	return return_value;
 }
 
 void
@@ -77,36 +81,40 @@ CartesianTrajectoryController::ShutDown()
 
 }
 
-void
+bool
 CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajectory::Request &req,
 												  		hbrs_srvs::ComputeTrajectory::Response &res )
 {
 	ROS_WARN( "Starting simplified solver for trajectory calculations" );
-	//Get all future path nodes
-	//geometry_msgs::PoseStamped next_pose = req.way_point_list.pose[0];	//Compute Direction Vector
 
-	//m_direction_vec.twist.linear.x = (next_pose.pose.position.x - m_current_gripper_pose.pose.position.x);
-	//m_direction_vec.twist.linear.y = (next_pose.pose.position.y - m_current_gripper_pose.pose.position.y);
-	//m_direction_vec.twist.linear.z = (next_pose.pose.position.z - m_current_gripper_pose.pose.position.z);
+	for(unsigned int i=0; i < m_arm_joint_names.size(); ++i)
+	{
+		for(unsigned int j=0; j < m_arm_velocities.velocities.size(); ++j)
+		{
+			if(m_arm_velocities.velocities[j].joint_uri == m_arm_joint_names[i])
+			{
+				m_arm_velocities.velocities[j].timeStamp = ros::Time::now();
+				m_arm_velocities.velocities[j].value = 0.2;
+			}
+		}
+	}
 
-	m_direction_vec.linear.x = 5;
-	m_direction_vec.linear.y = 0;
-	m_direction_vec.linear.z = 0;
-
-	m_direction_vec.angular.x = 0;
-	m_direction_vec.angular.y = 0;
-	m_direction_vec.angular.z = 0;
-
-	m_youbot_arm_velocity_publisher.publish( m_direction_vec );
+	ros::Time begin = ros::Time::now();
+	double duration = 0;
+	while( duration < 10 )
+	{
+		m_youbot_arm_velocity_publisher.publish( m_direction_vec );
+		duration = ros::Time::now().toSec() - begin.toSec();
+	}
 
 	res.output_value.output_code = hbrs_msgs::CartesianTrajectoryController::SUCCESS;
-
+	return true;
 }
 
-void
+bool
 CartesianTrajectoryController::ComputeTrajectoryIK()
 {
-
+	return false;
 }
 
 void
@@ -114,7 +122,48 @@ CartesianTrajectoryController::JointStateCallback( sensor_msgs::JointStateConstP
 {
 	for (unsigned i = 0; i < joints->position.size(); i++)
 	{
-		ROS_DEBUG_STREAM( "Joint Name: " << joints->name[i].c_str() );
-		ROS_DEBUG_STREAM( "Updated Gripper Position: " << joints->position[i] );
+		//ROS_DEBUG_STREAM( "Joint Name: " << joints->name[i].c_str() << " Updated Position: " << joints->position[i] );
 	}
+}
+
+void
+CartesianTrajectoryController::SetupYoubotArm()
+{
+	XmlRpc::XmlRpcValue parameter_list;
+	if( m_node_handler.getParam("/arm_controller/joints", parameter_list) )
+	{
+		ROS_ASSERT(parameter_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+
+		for (int32_t i = 0; i < parameter_list.size(); ++i)
+		{
+			ROS_ASSERT(parameter_list[i].getType() == XmlRpc::XmlRpcValue::TypeString);
+			m_arm_joint_names.push_back(static_cast<std::string>(parameter_list[i]));
+		}
+
+		//read joint limits
+		for(unsigned int i=0; i < m_arm_joint_names.size(); ++i)
+		{
+			arm_navigation_msgs::JointLimits joint_limits;
+			joint_limits.joint_name = m_arm_joint_names[i];
+			m_node_handler.getParam("/arm_controller/limits/" + m_arm_joint_names[i] + "/min", joint_limits.min_position);
+			m_node_handler.getParam("/arm_controller/limits/" + m_arm_joint_names[i] + "/max", joint_limits.max_position);
+			m_upper_joint_limits.push_back( joint_limits.max_position );
+			m_lower_joint_limits.push_back( joint_limits.min_position );
+		}
+
+		m_arm_velocities.velocities.clear();
+		for(unsigned int i=0; i < m_arm_joint_names.size(); ++i)
+		{
+			brics_actuator::JointValue joint_value;
+
+			joint_value.timeStamp = ros::Time::now();
+			joint_value.joint_uri = m_arm_joint_names[i];
+			joint_value.unit = "s^-1 rad"; //tostring(boost::units::si::radian_per_second);
+			joint_value.value = 0.0;
+
+			m_arm_velocities.velocities.push_back(joint_value);
+		}
+	}
+
+	ROS_INFO( "youBot Arm has been initialized." );
 }

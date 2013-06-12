@@ -29,6 +29,7 @@
 
 #include <ros/ros.h>
 #include <CartesianTrajectoryController.h>
+#include <ros/console.h>
 
 /**
  * 	This is the start point for the hbrs_cartesian_trajctory_controller software. In order to start

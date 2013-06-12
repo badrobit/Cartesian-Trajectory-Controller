@@ -1,5 +1,8 @@
 <?xml version="1.0"?>
 <launch>
+	<!-- Start up ROS Console to see debugging values -->	
+	<node pkg="rxtools" type="rxconsole" name="rxconsole"></node>
+
     <node pkg="hbrs_cartesian_trajectory_controller" type="cartesian_trajectory_controller" name="hbrs_cartesian_trajectory_controller" output="screen">
     </node>
 </launch>
