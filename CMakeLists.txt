@@ -14,5 +14,5 @@ include_directories(
 rosbuild_add_library( CartesianTrajectoryController ros/src/CartesianTrajectoryController.cpp )
 
 #..: HBRS Catresian Trajectory Controller ROS node :...............................................#
-rosbuild_add_executable( ctc_node ros/nodes/cartesian_trajectory_controller.cpp)
-target_link_libraries(ctc_node CartesianTrajectoryController )
+rosbuild_add_executable( cartesian_trajectory_controller ros/nodes/cartesian_trajectory_controller.cpp )
+target_link_libraries( cartesian_trajectory_controller CartesianTrajectoryController )

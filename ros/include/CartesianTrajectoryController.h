@@ -39,6 +39,8 @@
 #include <geometry_msgs/PoseStamped.h>
  #include <geometry_msgs/TwistStamped.h>
 
+#include <sensor_msgs/JointState.h>
+
 class CartesianTrajectoryController
 {
 public:
@@ -61,7 +63,7 @@ private:
 	 * This function takes in a list of x,y,z positions which represent points that will be the
 	 * positions in 3D coordonates that the arm needs to move to.
 	 */
-	void ComputeTrajectory( hbrs_srvs::ComputeTrajectory::Request &req,
+	bool ComputeTrajectory( hbrs_srvs::ComputeTrajectory::Request &req,
 							hbrs_srvs::ComputeTrajectory::Response &res );
 
 	/**
@@ -96,14 +98,20 @@ private:
 	 */
 	void ShutDown();
 
+	void JointStateCallback( sensor_msgs::JointStateConstPtr joints );
+
+
 protected:
-	ros::NodeHandle 			m_node_handler;
+	ros::NodeHandle 				m_node_handler;
 
-	ros::ServiceServer 			m_compute_trajectory_service;
-	ros::ServiceServer			m_execute_trajectory_service;
+	ros::Subscriber 				m_sub_joint_states;
+	ros::Publisher					m_youbot_arm_velocity_publisher;
 
-	geometry_msgs::PoseStamped	m_current_gripper_pose;
-	geometry_msgs::TwistStamped	m_direction_vec;
+	ros::ServiceServer 				m_compute_trajectory_service;
+	ros::ServiceServer				m_execute_trajectory_service;
+
+	geometry_msgs::PoseStamped		m_current_gripper_pose;
+	geometry_msgs::Twist		m_direction_vec;
 
 };
 
