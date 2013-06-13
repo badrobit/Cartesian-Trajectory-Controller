@@ -85,7 +85,7 @@ bool
 CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajectory::Request &req,
 												  		hbrs_srvs::ComputeTrajectory::Response &res )
 {
-	ROS_WARN( "Starting simplified solver for trajectory calculations" );
+	ROS_INFO( "Starting simplified solver for trajectory calculations" );
 
 	ROS_ASSERT( m_arm_joint_names.size() != 0 );
 
@@ -137,7 +137,7 @@ CartesianTrajectoryController::SetupYoubotArm()
 			m_arm_joint_names.push_back(static_cast<std::string>(parameter_list[i]));
 		}
 
-		ROS_WARN_STREAM( "Joint Names Size: " << m_arm_joint_names.size() != 0 );
+		ROS_WARN_STREAM( "Joint Names Size: " << m_arm_joint_names.size() );
 
 		//read joint limits
 		for(unsigned int i=0; i < m_arm_joint_names.size(); ++i)
