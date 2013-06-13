@@ -34,7 +34,7 @@ CartesianTrajectoryController::CartesianTrajectoryController( ros::NodeHandle i_
 	m_sub_joint_states = m_node_handler.subscribe( "/joint_states", 1, &CartesianTrajectoryController::JointStateCallback, this );
 	ROS_INFO( "Subscribed to the Joint States publication." );
 
-	m_youbot_arm_velocity_publisher = m_node_handler.advertise<brics_actuator::JointVelocities>("/arm_controller/velocity_command", 1);
+	m_youbot_arm_velocity_publisher = m_node_handler.advertise<brics_actuator::JointVelocities>("/arm_controller/velocity_command", 1 );
 	ROS_INFO( "Started publishing Arm Velocity Commands" );
 
 	m_compute_trajectory_service = m_node_handler.advertiseService( "compute_trajectory", &CartesianTrajectoryController::ComputeTrajectory, this );
@@ -87,23 +87,20 @@ CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajec
 {
 	ROS_WARN( "Starting simplified solver for trajectory calculations" );
 
-	for(unsigned int i=0; i < m_arm_joint_names.size(); ++i)
+	ROS_ASSERT( m_arm_joint_names.size() != 0 );
+
+	for(unsigned int i=0; i < m_arm_joint_names.size(); i++ )
 	{
-		for(unsigned int j=0; j < m_arm_velocities.velocities.size(); ++j)
-		{
-			if(m_arm_velocities.velocities[j].joint_uri == m_arm_joint_names[i])
-			{
-				m_arm_velocities.velocities[j].timeStamp = ros::Time::now();
-				m_arm_velocities.velocities[j].value = 0.2;
-			}
-		}
+		m_arm_velocities.velocities[i].timeStamp = ros::Time::now();
+		m_arm_velocities.velocities[i].value = 0;
+		ROS_WARN_STREAM( "Joint #" << i << " Velocitiy: " << m_arm_velocities.velocities[i].value );
 	}
 
 	ros::Time begin = ros::Time::now();
 	double duration = 0;
 	while( duration < 10 )
 	{
-		m_youbot_arm_velocity_publisher.publish( m_direction_vec );
+		m_youbot_arm_velocity_publisher.publish( m_arm_velocities );
 		duration = ros::Time::now().toSec() - begin.toSec();
 	}
 
@@ -140,6 +137,8 @@ CartesianTrajectoryController::SetupYoubotArm()
 			m_arm_joint_names.push_back(static_cast<std::string>(parameter_list[i]));
 		}
 
+		ROS_WARN_STREAM( "Joint Names Size: " << m_arm_joint_names.size() != 0 );
+
 		//read joint limits
 		for(unsigned int i=0; i < m_arm_joint_names.size(); ++i)
 		{
@@ -152,18 +151,11 @@ CartesianTrajectoryController::SetupYoubotArm()
 		}
 
 		m_arm_velocities.velocities.clear();
-		for(unsigned int i=0; i < m_arm_joint_names.size(); ++i)
-		{
-			brics_actuator::JointValue joint_value;
 
-			joint_value.timeStamp = ros::Time::now();
-			joint_value.joint_uri = m_arm_joint_names[i];
-			joint_value.unit = "s^-1 rad"; //tostring(boost::units::si::radian_per_second);
-			joint_value.value = 0.0;
-
-			m_arm_velocities.velocities.push_back(joint_value);
-		}
+		ROS_INFO( "youBot Arm has been initialized." );
 	}
-
-	ROS_INFO( "youBot Arm has been initialized." );
+	else
+	{
+		ROS_ERROR( "youBot Arm Failed to initialize" );
+	}
 }
