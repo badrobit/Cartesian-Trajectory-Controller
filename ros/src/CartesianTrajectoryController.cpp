@@ -137,7 +137,7 @@ CartesianTrajectoryController::SetupYoubotArm()
 			m_arm_joint_names.push_back(static_cast<std::string>(parameter_list[i]));
 		}
 
-		ROS_WARN_STREAM( "Joint Names Size: " << m_arm_joint_names.size() );
+		ROS_WARN_STREAM( "Found " << m_arm_joint_names.size() << " joints for the youBot arm." );
 
 		//read joint limits
 		for(unsigned int i=0; i < m_arm_joint_names.size(); ++i)
