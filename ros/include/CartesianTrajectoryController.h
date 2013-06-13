@@ -109,7 +109,10 @@ private:
 	void JointStateCallback( sensor_msgs::JointStateConstPtr joints );
 
 	/**
-	 *
+	 *	This function pulls in the parameters for the KUKA youBot arm from the ROS parameter server.
+	 * If you are not launching this on the actual hardware you need to use the off line launch file
+	 * which will pull the parameters from the youBot URDF description and post them to the server
+	 * so that they will still be available for you to use.
 	 */
 	void SetupYoubotArm();
 
