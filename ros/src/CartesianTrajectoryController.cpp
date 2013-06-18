@@ -34,7 +34,7 @@ CartesianTrajectoryController::CartesianTrajectoryController( ros::NodeHandle i_
 	m_sub_joint_states = m_node_handler.subscribe( "/joint_states", 1, &CartesianTrajectoryController::JointStateCallback, this );
 	ROS_INFO( "Subscribed to the Joint States publication." );
 
-	m_youbot_arm_velocity_publisher = m_node_handler.advertise<brics_actuator::JointVelocities>("/arm_controller/velocity_command", 1 );
+	m_youbot_arm_velocity_publisher = m_node_handler.advertise<geometry_msgs::TwistStamped>("/hbrs_manipulation/arm_cart_control/cartesian_velocity_command", 1 );
 	ROS_INFO( "Started publishing Arm Velocity Commands" );
 
 	m_compute_trajectory_service = m_node_handler.advertiseService( "compute_trajectory", &CartesianTrajectoryController::ComputeTrajectory, this );
@@ -89,12 +89,10 @@ CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajec
 
 	ROS_ASSERT( m_arm_joint_names.size() != 0 );
 
-	for(unsigned int i=0; i < m_arm_joint_names.size(); i++ )
-	{
-		m_arm_velocities.velocities[i].timeStamp = ros::Time::now();
-		m_arm_velocities.velocities[i].value = 0;
-		ROS_WARN_STREAM( "Joint #" << i << " Velocitiy: " << m_arm_velocities.velocities[i].value );
-	}
+	m_arm_velocities.header.frame_id = "/base_link";
+	m_arm_velocities.twist.linear.x = 0;
+	m_arm_velocities.twist.linear.y = 1;
+	m_arm_velocities.twist.linear.z = 0;
 
 	ros::Time begin = ros::Time::now();
 	double duration = 0;
@@ -119,7 +117,7 @@ CartesianTrajectoryController::JointStateCallback( sensor_msgs::JointStateConstP
 {
 	for (unsigned i = 0; i < joints->position.size(); i++)
 	{
-		//ROS_DEBUG_STREAM( "Joint Name: " << joints->name[i].c_str() << " Updated Position: " << joints->position[i] );
+		//ROS_WARN_STREAM( "Joint Name: " << joints->name[i].c_str() << " Updated Position: " << joints->position[i] );
 	}
 }
 
@@ -150,7 +148,7 @@ CartesianTrajectoryController::SetupYoubotArm()
 			m_lower_joint_limits.push_back( joint_limits.min_position );
 		}
 
-		m_arm_velocities.velocities.clear();
+		//m_arm_velocities.velocities.clear();
 
 		ROS_INFO( "youBot Arm has been initialized." );
 	}

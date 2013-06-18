@@ -41,7 +41,7 @@
 
 #include <sensor_msgs/JointState.h>
 
-#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <arm_navigation_msgs/JointLimits.h>
 #include <brics_actuator/JointVelocities.h>
 #include <brics_actuator/JointPositions.h>
@@ -116,24 +116,22 @@ private:
 	 */
 	void SetupYoubotArm();
 
-
 protected:
-	ros::NodeHandle 				m_node_handler;
+	ros::NodeHandle 					m_node_handler;
 
-	ros::Subscriber 				m_sub_joint_states;
-	ros::Publisher					m_youbot_arm_velocity_publisher;
+	ros::Subscriber 					m_sub_joint_states;
+	ros::Publisher						m_youbot_arm_velocity_publisher;
 
-	ros::ServiceServer 				m_compute_trajectory_service;
-	ros::ServiceServer				m_execute_trajectory_service;
+	ros::ServiceServer 					m_compute_trajectory_service;
+	ros::ServiceServer					m_execute_trajectory_service;
 
-	geometry_msgs::PoseStamped		m_current_gripper_pose;
-	geometry_msgs::Twist			m_direction_vec;
-	brics_actuator::JointVelocities	m_arm_velocities;
+	geometry_msgs::PoseStamped			m_current_gripper_pose;
+	geometry_msgs::TwistStamped			m_arm_velocities;
 
-	std::vector<std::string> 		m_arm_joint_names;
-	std::vector<double> 			m_upper_joint_limits;
-	std::vector<double> 			m_lower_joint_limits;
-	std::vector<bool> 				m_joint_positions_initialized;
+	std::vector<std::string> 			m_arm_joint_names;
+	std::vector<double> 				m_upper_joint_limits;
+	std::vector<double> 				m_lower_joint_limits;
+	std::vector<bool> 					m_joint_positions_initialized;
 
 };
 

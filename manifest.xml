@@ -13,4 +13,6 @@
 	<depend package="hbrs_srvs"/>
 	<depend package="brics_actuator"/>
 	<depend package="arm_navigation_msgs"/>
+	
+	<depend package="hbrs_arm_cart_control"/>
 </package>

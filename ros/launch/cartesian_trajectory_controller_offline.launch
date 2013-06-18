@@ -1,12 +1,9 @@
 <?xml version="1.0"?>
 <launch>
-	<!-- get the arm parameters from the YAML files -->
-	<rosparam command="load" file="$(find youbot_description)/controller/arm_joint_universal_control.yaml"/>
-    <rosparam command="load" file="$(find raw_hardware_config)/$(env ROBOT)/config/arm.yaml"/>
+	<!-- Launch the youbot if it is not all ready loaded -->
+	<include file="$(find raw_bringup)/robot.launch" />
 
-	<!-- Start up ROS Console to see debugging values -->	
-	<node pkg="rxtools" type="rxconsole" name="rxconsole"></node>
-
+	<!-- Start the Cartesian Trajectory Controller -->
     <node pkg="hbrs_cartesian_trajectory_controller" type="cartesian_trajectory_controller" name="hbrs_cartesian_trajectory_controller" output="screen" launch-prefix="gdb -ex run --args">
     </node>
 </launch>
