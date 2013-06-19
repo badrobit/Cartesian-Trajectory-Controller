@@ -16,7 +16,7 @@ rosservice call /compute_trajectory "way_point_list:
       z: 0.0
       w: 0.0
   - position:
-      x: 0.500
+      x: 0.600
       y: 0.000
       z: 0.050
     orientation:
