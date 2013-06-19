@@ -89,15 +89,30 @@ CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajec
 
 	ROS_ASSERT( m_arm_joint_names.size() != 0 );
 
-	m_arm_velocities.header.frame_id = "/base_link";
-	m_arm_velocities.twist.linear.x = 0;
-	m_arm_velocities.twist.linear.y = 1;
-	m_arm_velocities.twist.linear.z = 0;
+	geometry_msgs::PoseStamped next_pose;
+	next_pose.pose.position.x = -0.083;
+	next_pose.pose.position.y = 0.142;
+	next_pose.pose.position.z = 0.315;
 
 	ros::Time begin = ros::Time::now();
 	double duration = 0;
-	while( duration < 10 )
+	while( duration < 30 )
 	{
+		UpdateGripperPosition();
+
+		double x_difference = m_current_gripper_pose.pose.position.x - next_pose.pose.position.x;
+		double y_difference = m_current_gripper_pose.pose.position.y - next_pose.pose.position.y;
+		double z_difference = m_current_gripper_pose.pose.position.z - next_pose.pose.position.z;
+
+		ROS_WARN_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
+
+		double normalized_velocities = fabs( x_difference ) + fabs( y_difference ) + fabs( z_difference );
+
+		m_arm_velocities.header.frame_id = "/base_link";
+		m_arm_velocities.twist.linear.x = ( x_difference / normalized_velocities ) * m_arm_velocity_rate;
+		m_arm_velocities.twist.linear.y = ( y_difference / normalized_velocities ) * m_arm_velocity_rate;
+		m_arm_velocities.twist.linear.z = ( z_difference / normalized_velocities ) * m_arm_velocity_rate;
+
 		m_youbot_arm_velocity_publisher.publish( m_arm_velocities );
 		duration = ros::Time::now().toSec() - begin.toSec();
 	}
@@ -109,6 +124,15 @@ CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajec
 bool
 CartesianTrajectoryController::ComputeTrajectoryIK()
 {
+	ROS_INFO( "Using the Interpolated IK solver" );
+
+	/**
+	 * set parameters
+	 * getmotionplan -> current state,
+	 */
+
+	//m_ik_service_client = m_node_handler.serviceClient("r_interpolated_ik_motion_plan");
+
 	return false;
 }
 
@@ -117,6 +141,7 @@ CartesianTrajectoryController::JointStateCallback( sensor_msgs::JointStateConstP
 {
 	for (unsigned i = 0; i < joints->position.size(); i++)
 	{
+		//UpdateGripperPosition();
 		//ROS_WARN_STREAM( "Joint Name: " << joints->name[i].c_str() << " Updated Position: " << joints->position[i] );
 	}
 }
@@ -156,4 +181,27 @@ CartesianTrajectoryController::SetupYoubotArm()
 	{
 		ROS_ERROR( "youBot Arm Failed to initialize" );
 	}
+}
+
+bool
+CartesianTrajectoryController::UpdateGripperPosition()
+{
+	ROS_DEBUG( "Updating current youbot position" );
+
+	tf::StampedTransform transform;
+	try
+	{
+		m_transform_listener.lookupTransform( "/base_link", "/arm_link_5", ros::Time(0), transform);
+	}
+	catch (tf::TransformException ex)
+	{
+		ROS_ERROR("%s",ex.what());
+	}
+
+	m_current_gripper_pose.pose.position.x = transform.getOrigin().x();
+	m_current_gripper_pose.pose.position.y = transform.getOrigin().y();
+	m_current_gripper_pose.pose.position.z = transform.getOrigin().z();
+
+	ROS_DEBUG_STREAM( "Updated Grpper Position ( " << m_current_gripper_pose.pose.position.x << ", " <<
+			m_current_gripper_pose.pose.position.y << ", " << m_current_gripper_pose.pose.position.z << " )" );
 }
