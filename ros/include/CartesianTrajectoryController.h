@@ -38,6 +38,8 @@
 #include <hbrs_srvs/ExecuteTrajectory.h>
 #include <geometry_msgs/PoseStamped.h>
 
+#include <visualization_msgs/Marker.h>
+
 #include <tf/transform_listener.h>
 
 #include <sensor_msgs/JointState.h>
@@ -94,10 +96,6 @@ private:
 	bool ComputeTrajectorySimple( hbrs_srvs::ComputeTrajectory::Request &req,
 								hbrs_srvs::ComputeTrajectory::Response &res );
 
-	/**
-	 * TBD.
-	 */
-	bool ComputeTrajectoryIK();
 
 	/**
 	 * This function handles the closing out of any ROS Publisher, Subscribers.
@@ -120,13 +118,15 @@ private:
 	bool UpdateGripperPosition();
 
 protected:
-	static const double					m_arm_velocity_rate = 5;
-	static const double					m_arm_position_tolerance = 0.02;
+	static const double				m_arm_velocity_rate = 0.7;
+	static const double				m_arm_position_tolerance = 0.04;
 
 	ros::NodeHandle 					m_node_handler;
 
 	ros::Subscriber 					m_sub_joint_states;
 	ros::Publisher						m_youbot_arm_velocity_publisher;
+
+	ros::Publisher 						m_ctc_goal_marker_publisher;
 
 	ros::ServiceServer 					m_compute_trajectory_service;
 	ros::ServiceServer					m_execute_trajectory_service;

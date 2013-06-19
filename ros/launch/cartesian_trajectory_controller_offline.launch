@@ -1,9 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-	<!-- Launch the youbot if it is not all ready loaded -->
-	<include file="$(find raw_bringup)/robot.launch" />
-
 	<!-- Start the Cartesian Trajectory Controller -->
-    <node pkg="hbrs_cartesian_trajectory_controller" type="cartesian_trajectory_controller" name="hbrs_cartesian_trajectory_controller" output="screen" launch-prefix="gdb -ex run --args">
-    </node>
+    	<node pkg="hbrs_cartesian_trajectory_controller" type="cartesian_trajectory_controller" name="hbrs_cartesian_trajectory_controller" output="screen" launch-prefix="gdb -ex run --args">
+    	</node>
 </launch>

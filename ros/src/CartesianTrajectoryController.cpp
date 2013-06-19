@@ -40,6 +40,8 @@ CartesianTrajectoryController::CartesianTrajectoryController( ros::NodeHandle i_
 	m_compute_trajectory_service = m_node_handler.advertiseService( "compute_trajectory", &CartesianTrajectoryController::ComputeTrajectory, this );
 	ROS_INFO( "Advertised Compute Trajectory Server." );
 
+	m_ctc_goal_marker_publisher = m_node_handler.advertise<visualization_msgs::Marker>( "ctc_goal_marker", 0 );
+
 	SetupYoubotArm();
 }
 
@@ -55,8 +57,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 
 	if( req.use_ik_solver )
 	{
-		ROS_WARN( "Using inverse kinematics for trajectory calculations" );
-		return_value = ComputeTrajectoryIK();
+		ROS_ERROR( "Using Inverse Kinematics ... thats too fancy" );
 	}
 	else
 	{
@@ -85,18 +86,45 @@ bool
 CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajectory::Request &req,
 												  		hbrs_srvs::ComputeTrajectory::Response &res )
 {
+
+
 	ROS_INFO( "Starting simplified solver for trajectory calculations" );
+	bool done_x_movement = false;
+	bool done_y_movement = false;
+	bool done_z_movement = false;
 
 	ROS_ASSERT( m_arm_joint_names.size() != 0 );
 
 	geometry_msgs::PoseStamped next_pose;
-	next_pose.pose.position.x = -0.083;
-	next_pose.pose.position.y = 0.142;
+	next_pose.pose.position.x = 0.40;
+	next_pose.pose.position.y = 0.342;
 	next_pose.pose.position.z = 0.315;
+
+	visualization_msgs::Marker marker;
+	marker.header.frame_id = "base_link";
+	marker.header.stamp = ros::Time();
+	marker.id = 0;
+	marker.type = visualization_msgs::Marker::SPHERE;
+	marker.action = visualization_msgs::Marker::ADD;
+	marker.pose.position.x = next_pose.pose.position.x;
+	marker.pose.position.y = next_pose.pose.position.y;
+	marker.pose.position.z = next_pose.pose.position.z;
+	marker.pose.orientation.x = 0.0;
+	marker.pose.orientation.y = 0.0;
+	marker.pose.orientation.z = 0.0;
+	marker.pose.orientation.w = 1.0;
+	marker.scale.x = 0.1;
+	marker.scale.y = 0.1;
+	marker.scale.z = 0.1;
+	marker.color.a = 1.0;
+	marker.color.r = 0.0;
+	marker.color.g = 1.0;
+	marker.color.b = 0.0;
+	m_ctc_goal_marker_publisher.publish( marker );
 
 	ros::Time begin = ros::Time::now();
 	double duration = 0;
-	while( duration < 30 )
+	while( !( done_x_movement && done_y_movement && done_z_movement ) )
 	{
 		UpdateGripperPosition();
 
@@ -104,36 +132,74 @@ CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajec
 		double y_difference = m_current_gripper_pose.pose.position.y - next_pose.pose.position.y;
 		double z_difference = m_current_gripper_pose.pose.position.z - next_pose.pose.position.z;
 
-		ROS_WARN_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
+		//ROS_WARN_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
 
 		double normalized_velocities = fabs( x_difference ) + fabs( y_difference ) + fabs( z_difference );
 
 		m_arm_velocities.header.frame_id = "/base_link";
-		m_arm_velocities.twist.linear.x = ( x_difference / normalized_velocities ) * m_arm_velocity_rate;
-		m_arm_velocities.twist.linear.y = ( y_difference / normalized_velocities ) * m_arm_velocity_rate;
-		m_arm_velocities.twist.linear.z = ( z_difference / normalized_velocities ) * m_arm_velocity_rate;
+
+		/**
+		 * X Direction
+		 */
+		if( x_difference > m_arm_position_tolerance )
+		{
+			m_arm_velocities.twist.linear.x = -( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
+			done_x_movement = false;
+		}
+		else if( x_difference < -m_arm_position_tolerance )
+		{
+			m_arm_velocities.twist.linear.x = ( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
+			done_x_movement = false;
+		}
+		else
+		{
+			m_arm_velocities.twist.linear.x = 0;
+			done_x_movement = true;
+		}
+
+		/**
+		 * Y DIRECTION
+		 */
+		if( y_difference > m_arm_position_tolerance )
+		{
+			m_arm_velocities.twist.linear.y = -( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
+			done_y_movement = false;
+		}
+		else if( y_difference < m_arm_position_tolerance )
+		{
+			m_arm_velocities.twist.linear.y = ( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
+			done_y_movement = false;
+		}
+		else
+		{
+			m_arm_velocities.twist.linear.y = 0;
+			done_y_movement = true;
+		}
+
+		/**
+		 * Z DIRECTION
+		 */
+		if( z_difference > m_arm_position_tolerance )
+		{
+			m_arm_velocities.twist.linear.z = -( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
+			done_z_movement = false;
+		}
+		else if( z_difference < -m_arm_position_tolerance )
+		{
+			m_arm_velocities.twist.linear.z = ( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
+			done_z_movement = false;
+		}
+		else
+		{
+			m_arm_velocities.twist.linear.z = 0;
+			done_z_movement = true;
+		}
 
 		m_youbot_arm_velocity_publisher.publish( m_arm_velocities );
-		duration = ros::Time::now().toSec() - begin.toSec();
 	}
 
 	res.output_value.output_code = hbrs_msgs::CartesianTrajectoryController::SUCCESS;
 	return true;
-}
-
-bool
-CartesianTrajectoryController::ComputeTrajectoryIK()
-{
-	ROS_INFO( "Using the Interpolated IK solver" );
-
-	/**
-	 * set parameters
-	 * getmotionplan -> current state,
-	 */
-
-	//m_ik_service_client = m_node_handler.serviceClient("r_interpolated_ik_motion_plan");
-
-	return false;
 }
 
 void
@@ -204,4 +270,7 @@ CartesianTrajectoryController::UpdateGripperPosition()
 
 	ROS_DEBUG_STREAM( "Updated Grpper Position ( " << m_current_gripper_pose.pose.position.x << ", " <<
 			m_current_gripper_pose.pose.position.y << ", " << m_current_gripper_pose.pose.position.z << " )" );
+
+	return true;
+
 }
