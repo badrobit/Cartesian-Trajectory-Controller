@@ -38,6 +38,7 @@
 #include <hbrs_srvs/ExecuteTrajectory.h>
 #include <geometry_msgs/PoseStamped.h>
 
+#include <tf/transform_listener.h>
 
 #include <sensor_msgs/JointState.h>
 
@@ -116,7 +117,12 @@ private:
 	 */
 	void SetupYoubotArm();
 
+	bool UpdateGripperPosition();
+
 protected:
+	static const double					m_arm_velocity_rate = 5;
+	static const double					m_arm_position_tolerance = 0.02;
+
 	ros::NodeHandle 					m_node_handler;
 
 	ros::Subscriber 					m_sub_joint_states;
@@ -124,6 +130,10 @@ protected:
 
 	ros::ServiceServer 					m_compute_trajectory_service;
 	ros::ServiceServer					m_execute_trajectory_service;
+
+	ros::ServiceClient					m_ik_service_client;
+
+	tf::TransformListener 				m_transform_listener;
 
 	geometry_msgs::PoseStamped			m_current_gripper_pose;
 	geometry_msgs::TwistStamped			m_arm_velocities;
