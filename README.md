@@ -21,7 +21,7 @@ This ROS node is designed to take a series of points along a trajectory that you
 ## Running It: 
 In order to start the HBRS Cartesian Trajectory Controller you need to call the service which is provides in the following way from the terminal: 
 
-`$ rosservice call /compute_trajectory "use_ik_solution: false" < waypointlist.txt`
+`$ rosservice call /compute_trajectory [waypoints]`
 
 ### WayPoint List
 The input arguments take in a PoseArray which lists out in order all of the poses that you want to reach using the arm. 
