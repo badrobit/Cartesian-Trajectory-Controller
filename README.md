@@ -7,5 +7,6 @@ hbrs_cartesian_trajectory_controller
 * `rosrun rviz rviz`
 
 
+## Environment Variables
 This requires the following environment variables to be present in your bashrc file: 
 * `export ROBOT=youbot-hbrs1`
