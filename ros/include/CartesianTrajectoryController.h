@@ -87,17 +87,6 @@ private:
 							hbrs_srvs::ExecuteTrajectory::Response &res );
 
 	/**
-	 * This is a simple trajectory calculator that will take in a start and an end point and split
-	 * it up in a way where we are able to leverage the youBot Cartesian Controller to move the arm
-	 * along the line by splitting up the line into small enough portions that we are able to
-	 * smoothly move along the line.
-	 */
-
-	bool ComputeTrajectorySimple( hbrs_srvs::ComputeTrajectory::Request &req,
-								hbrs_srvs::ComputeTrajectory::Response &res );
-
-
-	/**
 	 * This function handles the closing out of any ROS Publisher, Subscribers.
 	 */
 	void ShutDown();
@@ -118,8 +107,8 @@ private:
 	bool UpdateGripperPosition();
 
 protected:
-	static const double				m_arm_velocity_rate = 0.7;
-	static const double				m_arm_position_tolerance = 0.04;
+	static const double				m_arm_velocity_rate = 0.5;
+	static const double				m_arm_position_tolerance = 0.05;
 
 	ros::NodeHandle 					m_node_handler;
 

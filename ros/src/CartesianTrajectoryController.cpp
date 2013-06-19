@@ -53,19 +53,125 @@ bool
 CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::Request &req,
 												  hbrs_srvs::ComputeTrajectory::Response &res )
 {
-	bool return_value = false;
+	ROS_ASSERT( req.way_point_list.poses.size() != 0 );
 
-	if( req.use_ik_solver )
+	for( int i = 0; i < req.way_point_list.poses.size(); i ++ )
 	{
-		ROS_ERROR( "Using Inverse Kinematics ... thats too fancy" );
-	}
-	else
-	{
-		ROS_WARN( "Using simplified solver for trajectory calculations" );
-		return_value = ComputeTrajectorySimple(req, res);
+		bool done_x_movement = false;
+		bool done_y_movement = false;
+		bool done_z_movement = false;
+
+		ROS_ASSERT( m_arm_joint_names.size() != 0 );
+
+		geometry_msgs::PoseStamped next_pose;
+		next_pose.pose.position.x = req.way_point_list.poses[i].position.x;
+		next_pose.pose.position.y = req.way_point_list.poses[i].position.y;
+		next_pose.pose.position.z = req.way_point_list.poses[i].position.z;
+
+		ROS_INFO_STREAM( "Starting movement to WayPoint #" << i << " [" << next_pose.pose.position.x <<
+				", " << next_pose.pose.position.y << ", " << next_pose.pose.position.z << "] " );
+
+		visualization_msgs::Marker marker;
+		marker.header.frame_id = "/base_link";
+		marker.header.stamp = ros::Time();
+		marker.id = i;
+		marker.type = visualization_msgs::Marker::SPHERE;
+		marker.action = visualization_msgs::Marker::ADD;
+		marker.pose.position.x = next_pose.pose.position.x;
+		marker.pose.position.y = next_pose.pose.position.y;
+		marker.pose.position.z = next_pose.pose.position.z;
+		marker.pose.orientation.x = 0.0;
+		marker.pose.orientation.y = 0.0;
+		marker.pose.orientation.z = 0.0;
+		marker.pose.orientation.w = 1.0;
+		marker.scale.x = 0.1;
+		marker.scale.y = 0.1;
+		marker.scale.z = 0.1;
+		marker.color.a = 1.0;
+		marker.color.r = 0.0;
+		marker.color.g = 1.0;
+		marker.color.b = 0.0;
+		m_ctc_goal_marker_publisher.publish( marker );
+
+		while(  !( done_x_movement && done_y_movement && done_z_movement )  )
+		{
+			UpdateGripperPosition();
+
+			double x_difference = m_current_gripper_pose.pose.position.x - next_pose.pose.position.x;
+			double y_difference = m_current_gripper_pose.pose.position.y - next_pose.pose.position.y;
+			double z_difference = m_current_gripper_pose.pose.position.z - next_pose.pose.position.z;
+
+			//ROS_WARN_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
+			//ROS_WARN_STREAM( "Done in x: " << done_x_movement << " y: " << done_y_movement << " z: " << done_z_movement );
+
+			double normalized_velocities = fabs( x_difference ) + fabs( y_difference ) + fabs( z_difference );
+
+			m_arm_velocities.header.frame_id = "/base_link";
+
+
+			if( x_difference >= m_arm_position_tolerance )
+			{
+				m_arm_velocities.twist.linear.x = -( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
+				done_x_movement = false;
+			}
+			else if( x_difference <= -m_arm_position_tolerance )
+			{
+				m_arm_velocities.twist.linear.x = ( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
+				done_x_movement = false;
+			}
+			else
+			{
+				ROS_WARN( "STOPPING X" );
+				m_arm_velocities.twist.linear.x = 0;
+				done_x_movement = true;
+			}
+
+
+			if( y_difference >= m_arm_position_tolerance )
+			{
+				m_arm_velocities.twist.linear.y = -( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
+				done_y_movement = false;
+			}
+			else if( y_difference <= -m_arm_position_tolerance )
+			{
+				m_arm_velocities.twist.linear.y = ( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
+				done_y_movement = false;
+			}
+			else
+			{
+				ROS_WARN( "STOPPING Y" );
+				m_arm_velocities.twist.linear.y = 0;
+				done_y_movement = true;
+			}
+
+
+			if( z_difference >= m_arm_position_tolerance )
+			{
+				m_arm_velocities.twist.linear.z = -( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
+				done_z_movement = false;
+			}
+			else if( z_difference <= -m_arm_position_tolerance )
+			{
+				m_arm_velocities.twist.linear.z = ( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
+				done_z_movement = false;
+			}
+			else
+			{
+				ROS_WARN( "STOPPING Z" );
+				m_arm_velocities.twist.linear.z = 0;
+				done_z_movement = true;
+			}
+
+			m_youbot_arm_velocity_publisher.publish( m_arm_velocities );
+			ros::Duration(0.05).sleep();
+		}
+
+		ROS_INFO_STREAM( "Finished with WayPoint #" << i << " moving to next WayPoint" );
 	}
 
-	return return_value;
+	ROS_INFO_STREAM( "Finished following provided Trajectory" );
+	res.output_value.output_code = hbrs_msgs::CartesianTrajectoryController::SUCCESS;
+	return true;
 }
 
 void
@@ -80,126 +186,6 @@ void
 CartesianTrajectoryController::ShutDown()
 {
 
-}
-
-bool
-CartesianTrajectoryController::ComputeTrajectorySimple( hbrs_srvs::ComputeTrajectory::Request &req,
-												  		hbrs_srvs::ComputeTrajectory::Response &res )
-{
-
-
-	ROS_INFO( "Starting simplified solver for trajectory calculations" );
-	bool done_x_movement = false;
-	bool done_y_movement = false;
-	bool done_z_movement = false;
-
-	ROS_ASSERT( m_arm_joint_names.size() != 0 );
-
-	geometry_msgs::PoseStamped next_pose;
-	next_pose.pose.position.x = 0.40;
-	next_pose.pose.position.y = 0.342;
-	next_pose.pose.position.z = 0.315;
-
-	visualization_msgs::Marker marker;
-	marker.header.frame_id = "base_link";
-	marker.header.stamp = ros::Time();
-	marker.id = 0;
-	marker.type = visualization_msgs::Marker::SPHERE;
-	marker.action = visualization_msgs::Marker::ADD;
-	marker.pose.position.x = next_pose.pose.position.x;
-	marker.pose.position.y = next_pose.pose.position.y;
-	marker.pose.position.z = next_pose.pose.position.z;
-	marker.pose.orientation.x = 0.0;
-	marker.pose.orientation.y = 0.0;
-	marker.pose.orientation.z = 0.0;
-	marker.pose.orientation.w = 1.0;
-	marker.scale.x = 0.1;
-	marker.scale.y = 0.1;
-	marker.scale.z = 0.1;
-	marker.color.a = 1.0;
-	marker.color.r = 0.0;
-	marker.color.g = 1.0;
-	marker.color.b = 0.0;
-	m_ctc_goal_marker_publisher.publish( marker );
-
-	ros::Time begin = ros::Time::now();
-	double duration = 0;
-	while( !( done_x_movement && done_y_movement && done_z_movement ) )
-	{
-		UpdateGripperPosition();
-
-		double x_difference = m_current_gripper_pose.pose.position.x - next_pose.pose.position.x;
-		double y_difference = m_current_gripper_pose.pose.position.y - next_pose.pose.position.y;
-		double z_difference = m_current_gripper_pose.pose.position.z - next_pose.pose.position.z;
-
-		//ROS_WARN_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
-
-		double normalized_velocities = fabs( x_difference ) + fabs( y_difference ) + fabs( z_difference );
-
-		m_arm_velocities.header.frame_id = "/base_link";
-
-		/**
-		 * X Direction
-		 */
-		if( x_difference > m_arm_position_tolerance )
-		{
-			m_arm_velocities.twist.linear.x = -( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
-			done_x_movement = false;
-		}
-		else if( x_difference < -m_arm_position_tolerance )
-		{
-			m_arm_velocities.twist.linear.x = ( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
-			done_x_movement = false;
-		}
-		else
-		{
-			m_arm_velocities.twist.linear.x = 0;
-			done_x_movement = true;
-		}
-
-		/**
-		 * Y DIRECTION
-		 */
-		if( y_difference > m_arm_position_tolerance )
-		{
-			m_arm_velocities.twist.linear.y = -( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
-			done_y_movement = false;
-		}
-		else if( y_difference < m_arm_position_tolerance )
-		{
-			m_arm_velocities.twist.linear.y = ( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
-			done_y_movement = false;
-		}
-		else
-		{
-			m_arm_velocities.twist.linear.y = 0;
-			done_y_movement = true;
-		}
-
-		/**
-		 * Z DIRECTION
-		 */
-		if( z_difference > m_arm_position_tolerance )
-		{
-			m_arm_velocities.twist.linear.z = -( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
-			done_z_movement = false;
-		}
-		else if( z_difference < -m_arm_position_tolerance )
-		{
-			m_arm_velocities.twist.linear.z = ( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
-			done_z_movement = false;
-		}
-		else
-		{
-			m_arm_velocities.twist.linear.z = 0;
-			done_z_movement = true;
-		}
-
-		m_youbot_arm_velocity_publisher.publish( m_arm_velocities );
-	}
-
-	res.output_value.output_code = hbrs_msgs::CartesianTrajectoryController::SUCCESS;
-	return true;
 }
 
 void
