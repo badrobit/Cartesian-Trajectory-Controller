@@ -57,30 +57,34 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 	ROS_ASSERT( req.way_point_list.poses.size() != 0 );
 	ROS_INFO_STREAM( "Starting Trajectory for " << req.way_point_list.poses.size() << " waypoints" );
 
-	visualization_msgs::Marker goal_points, trajectory;
-	goal_points.header.frame_id = trajectory.header.frame_id = "/base_link";
-	goal_points.header.stamp = trajectory.header.stamp = ros::Time();
-	goal_points.ns = trajectory.ns = "ctc_visual_output";
+	visualization_msgs::Marker goal_points, ideal_trajectory, real_trajectory;
+	goal_points.header.frame_id = ideal_trajectory.header.frame_id = real_trajectory.header.frame_id = "/base_link";
+	goal_points.header.stamp = ideal_trajectory.header.stamp = real_trajectory.header.stamp = ros::Time();
+	goal_points.ns = ideal_trajectory.ns = real_trajectory.ns = "ctc_visual_output";
 
 	goal_points.type = visualization_msgs::Marker::POINTS;
-	trajectory.type = visualization_msgs::Marker::LINE_STRIP;
-	goal_points.action = trajectory.action = visualization_msgs::Marker::ADD;
-	goal_points.pose.orientation.w = trajectory.pose.orientation.w = 1.0;
+	ideal_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
+	real_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
+	goal_points.action = ideal_trajectory.action = real_trajectory.action = visualization_msgs::Marker::ADD;
+	goal_points.pose.orientation.w = ideal_trajectory.pose.orientation.w = real_trajectory.pose.orientation.w = 1.0;
 
 	goal_points.id = 0;
-	trajectory.id = 1;
+	ideal_trajectory.id = 1;
+	real_trajectory.id = 2;
 
 	goal_points.scale.x = m_arm_position_tolerance;
 	goal_points.scale.y = m_arm_position_tolerance;
 	goal_points.scale.z = m_arm_position_tolerance;
 
-	trajectory.scale.x = 0.01;
+	ideal_trajectory.scale.x = 0.01;
+	real_trajectory.scale.x = 0.01;
 
 	goal_points.color.a = 1.0;
 	goal_points.color.g = 1.0;
-
-	trajectory.color.a = 1.0;
-	trajectory.color.b = 1.0;
+	ideal_trajectory.color.a = 1.0;
+	ideal_trajectory.color.b = 1.0;
+	real_trajectory.color.a = 1.0;
+	real_trajectory.color.r = 1.0;
 
 	for( int i = 0; i < req.way_point_list.poses.size(); i ++ )
 	{
@@ -104,14 +108,20 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 		p.z = next_pose.pose.position.z;
 
 		goal_points.points.push_back( p );
-		trajectory.points.push_back( p );
+		ideal_trajectory.points.push_back( p );
 
 		m_ctc_marker_publisher.publish( goal_points );
-		m_ctc_marker_publisher.publish( trajectory );
+		m_ctc_marker_publisher.publish( ideal_trajectory );
 
 		while(  !( done_x_movement && done_y_movement && done_z_movement )  )
 		{
 			UpdateGripperPosition();
+			geometry_msgs::Point p1;
+			p1.x = m_current_gripper_pose.pose.position.x;
+			p1.y = m_current_gripper_pose.pose.position.y;
+			p1.z = m_current_gripper_pose.pose.position.z;
+			real_trajectory.points.push_back( p1 );
+			m_ctc_marker_publisher.publish( real_trajectory );
 
 			double x_difference = m_current_gripper_pose.pose.position.x - next_pose.pose.position.x;
 			double y_difference = m_current_gripper_pose.pose.position.y - next_pose.pose.position.y;
@@ -258,7 +268,7 @@ CartesianTrajectoryController::UpdateGripperPosition()
 	tf::StampedTransform transform;
 	try
 	{
-		m_transform_listener.lookupTransform( "/base_link", "/arm_link_5", ros::Time(0), transform);
+		m_transform_listener.lookupTransform( "/base_link", "/marker_pos", ros::Time(0), transform);
 	}
 	catch (tf::TransformException ex)
 	{
