@@ -37,6 +37,7 @@
 // hbrs_srvs/srv/ComputeTrajectory.srv
 #include <hbrs_srvs/ExecuteTrajectory.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseArray.h>
 
 #include <visualization_msgs/Marker.h>
 
