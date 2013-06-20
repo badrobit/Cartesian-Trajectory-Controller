@@ -107,9 +107,12 @@ private:
 
 	bool UpdateGripperPosition();
 
+	std::vector<geometry_msgs::PoseStamped> GetWayPoints(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2);
+
 protected:
 	static const double				m_arm_velocity_rate = 0.5;
 	static const double				m_arm_position_tolerance = 0.05;
+	static const int 				m_way_point_resolution = 0.5;
 
 	ros::NodeHandle 					m_node_handler;
 

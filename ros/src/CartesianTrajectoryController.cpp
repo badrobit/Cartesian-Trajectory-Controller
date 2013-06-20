@@ -285,3 +285,36 @@ CartesianTrajectoryController::UpdateGripperPosition()
 	return true;
 
 }
+
+std::vector<geometry_msgs::PoseStamped> 
+GetWayPoints(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2)
+{
+	ROS_DEBUG( "Calculating Waypoint Positions" );
+
+	std::vector<geometry_msgs::PoseStamped> way_points;
+
+	float distance = sqrt( 	pow( (p1.pose.position.x - p2.pose.position.x) ,2) + 
+                    		pow( (p1.pose.position.y - p2.pose.position.y) ,2) +
+                    		pow( (p1.pose.position.z - p2.pose.position.z) ,2) );
+	int number_of_way_points = ceil(distance/m_way_point_resolution);
+	float interval = 1/number_of_way_points;
+
+	dx = p1.pose.position.x + (p2.pose.position.x - p1.pose.position.x);
+	dy = p1.pose.position.y + (p2.pose.position.y - p1.pose.position.y);
+	dz = p1.pose.position.z + (p2.pose.position.z - p1.pose.position.z);
+
+	way_points.push_back(p1);
+	for (int i=0; i<number_of_way_points; i++)
+	{
+		geometry_msgs::PoseStamped next_point = way_points.at(i);
+
+		next_point.pose.position.x += dx*interval;
+		next_point.pose.position.y += dy*interval;
+		next_point.pose.position.z += dz*interval;
+
+		way_points.push_back(next_point);
+	}
+	way_points.push_back(p2);
+
+	return way_points;
+}
