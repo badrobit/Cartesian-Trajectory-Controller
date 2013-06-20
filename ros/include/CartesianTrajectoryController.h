@@ -115,7 +115,7 @@ protected:
 	ros::Subscriber 					m_sub_joint_states;
 	ros::Publisher						m_youbot_arm_velocity_publisher;
 
-	ros::Publisher 						m_ctc_goal_marker_publisher;
+	ros::Publisher 						m_ctc_marker_publisher;
 
 	ros::ServiceServer 					m_compute_trajectory_service;
 	ros::ServiceServer					m_execute_trajectory_service;
