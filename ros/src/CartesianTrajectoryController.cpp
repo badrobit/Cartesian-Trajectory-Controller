@@ -40,7 +40,8 @@ CartesianTrajectoryController::CartesianTrajectoryController( ros::NodeHandle i_
 	m_compute_trajectory_service = m_node_handler.advertiseService( "compute_trajectory", &CartesianTrajectoryController::ComputeTrajectory, this );
 	ROS_INFO( "Advertised Compute Trajectory Server." );
 
-	m_ctc_goal_marker_publisher = m_node_handler.advertise<visualization_msgs::Marker>( "ctc_goal_marker", 0 );
+	m_ctc_marker_publisher = m_node_handler.advertise<visualization_msgs::Marker>( "ctc_markers", 10 );
+	ROS_INFO( "Started Goal Point and Trajectory marker publication" );
 
 	SetupYoubotArm();
 }
@@ -54,6 +55,32 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 												  hbrs_srvs::ComputeTrajectory::Response &res )
 {
 	ROS_ASSERT( req.way_point_list.poses.size() != 0 );
+	ROS_INFO_STREAM( "Starting Trajectory for " << req.way_point_list.poses.size() << " waypoints" );
+
+	visualization_msgs::Marker goal_points, trajectory;
+	goal_points.header.frame_id = trajectory.header.frame_id = "/base_link";
+	goal_points.header.stamp = trajectory.header.stamp = ros::Time();
+	goal_points.ns = trajectory.ns = "ctc_visual_output";
+
+	goal_points.type = visualization_msgs::Marker::POINTS;
+	trajectory.type = visualization_msgs::Marker::LINE_STRIP;
+	goal_points.action = trajectory.action = visualization_msgs::Marker::ADD;
+	goal_points.pose.orientation.w = trajectory.pose.orientation.w = 1.0;
+
+	goal_points.id = 0;
+	trajectory.id = 1;
+
+	goal_points.scale.x = m_arm_position_tolerance;
+	goal_points.scale.y = m_arm_position_tolerance;
+	goal_points.scale.z = m_arm_position_tolerance;
+
+	trajectory.scale.x = 0.01;
+
+	goal_points.color.a = 1.0;
+	goal_points.color.g = 1.0;
+
+	trajectory.color.a = 1.0;
+	trajectory.color.b = 1.0;
 
 	for( int i = 0; i < req.way_point_list.poses.size(); i ++ )
 	{
@@ -71,27 +98,16 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 		ROS_INFO_STREAM( "Starting movement to WayPoint #" << i << " [" << next_pose.pose.position.x <<
 				", " << next_pose.pose.position.y << ", " << next_pose.pose.position.z << "] " );
 
-		visualization_msgs::Marker marker;
-		marker.header.frame_id = "/base_link";
-		marker.header.stamp = ros::Time();
-		marker.id = i;
-		marker.type = visualization_msgs::Marker::SPHERE;
-		marker.action = visualization_msgs::Marker::ADD;
-		marker.pose.position.x = next_pose.pose.position.x;
-		marker.pose.position.y = next_pose.pose.position.y;
-		marker.pose.position.z = next_pose.pose.position.z;
-		marker.pose.orientation.x = 0.0;
-		marker.pose.orientation.y = 0.0;
-		marker.pose.orientation.z = 0.0;
-		marker.pose.orientation.w = 1.0;
-		marker.scale.x = 0.1;
-		marker.scale.y = 0.1;
-		marker.scale.z = 0.1;
-		marker.color.a = 1.0;
-		marker.color.r = 0.0;
-		marker.color.g = 1.0;
-		marker.color.b = 0.0;
-		m_ctc_goal_marker_publisher.publish( marker );
+		geometry_msgs::Point p;
+		p.x = next_pose.pose.position.x;
+		p.y = next_pose.pose.position.y;
+		p.z = next_pose.pose.position.z;
+
+		goal_points.points.push_back( p );
+		trajectory.points.push_back( p );
+
+		m_ctc_marker_publisher.publish( goal_points );
+		m_ctc_marker_publisher.publish( trajectory );
 
 		while(  !( done_x_movement && done_y_movement && done_z_movement )  )
 		{
@@ -101,13 +117,12 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 			double y_difference = m_current_gripper_pose.pose.position.y - next_pose.pose.position.y;
 			double z_difference = m_current_gripper_pose.pose.position.z - next_pose.pose.position.z;
 
-			//ROS_WARN_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
-			//ROS_WARN_STREAM( "Done in x: " << done_x_movement << " y: " << done_y_movement << " z: " << done_z_movement );
+			ROS_DEBUG_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
+			ROS_DEBUG_STREAM( "Done in x: " << done_x_movement << " y: " << done_y_movement << " z: " << done_z_movement );
 
 			double normalized_velocities = fabs( x_difference ) + fabs( y_difference ) + fabs( z_difference );
 
 			m_arm_velocities.header.frame_id = "/base_link";
-
 
 			if( x_difference >= m_arm_position_tolerance )
 			{
@@ -121,7 +136,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 			}
 			else
 			{
-				ROS_WARN( "STOPPING X" );
+				ROS_DEBUG( "STOPPING X" );
 				m_arm_velocities.twist.linear.x = 0;
 				done_x_movement = true;
 			}
@@ -139,7 +154,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 			}
 			else
 			{
-				ROS_WARN( "STOPPING Y" );
+				ROS_DEBUG( "STOPPING Y" );
 				m_arm_velocities.twist.linear.y = 0;
 				done_y_movement = true;
 			}
@@ -157,7 +172,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 			}
 			else
 			{
-				ROS_WARN( "STOPPING Z" );
+				ROS_DEBUG( "STOPPING Z" );
 				m_arm_velocities.twist.linear.z = 0;
 				done_z_movement = true;
 			}
