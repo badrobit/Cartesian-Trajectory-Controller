@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 	<!-- Start rviz -->
-	<node pkg="rviz" type="rviz" name="rviz" args="--d $(find hbrs_cartesian_trajectory_controller)/ros/config/ctc_debug.vcg"/>
+	<node pkg="rviz" type="rviz" name="rviz" args="--d $(find hbrs_cartesian_trajectory_controller)/ros/config/ctc_debugging.vcg"/>
 
 	<!-- Start the Cartesian Trajectory Controller -->
 	<node pkg="hbrs_cartesian_trajectory_controller" type="cartesian_trajectory_controller" name="hbrs_cartesian_trajectory_controller" output="screen" launch-prefix="gdb -ex run --args" />
