@@ -324,17 +324,17 @@ CartesianTrajectoryController::GetWayPoints(geometry_msgs::PoseStamped p1, geome
 
 	//int number_of_way_points = ceil(distance/m_way_point_resolution);
 	int number_of_way_points = 3;
-	float interval = 1 / ( number_of_way_points + 1 );
+	//double interval = 1 / number_of_way_points;
+	double interval = 0.3;
+	ROS_WARN_STREAM( "Calculated Interval" << " [" << 	interval << "]" );
 
-	double dx = p1.pose.position.x + (p2.pose.position.x - p1.pose.position.x);
-	double dy = p1.pose.position.y + (p2.pose.position.y - p1.pose.position.y);
-	double dz = p1.pose.position.z + (p2.pose.position.z - p1.pose.position.z);
+	double dx = (p2.pose.position.x - p1.pose.position.x);
+	double dy = (p2.pose.position.y - p1.pose.position.y);
+	double dz = (p2.pose.position.z - p1.pose.position.z);
 
 	ROS_WARN_STREAM( "Calculated Slope" << " [" << 	dx << "," <<
 												 	dy << "," <<
 												 	dz << "]" );
-
-	ROS_WARN_STREAM( "Calculated Interval" << " [" << 	interval << "]" );
 
 	way_points.push_back(p1);
 	for (int i=0; i<number_of_way_points; i++)

@@ -9,7 +9,7 @@ rosservice call /compute_trajectory "way_point_list:
   - position:
       x: 0.350
       y: 0.350
-      z: 0.005
+      z: 0.000
     orientation:
       x: 0.0
       y: 0.0
@@ -18,7 +18,7 @@ rosservice call /compute_trajectory "way_point_list:
   - position:
       x: 0.600
       y: 0.000
-      z: 0.050
+      z: 0.000
     orientation:
       x: 0.0
       y: 0.0
@@ -27,7 +27,7 @@ rosservice call /compute_trajectory "way_point_list:
   - position:
       x: 0.350
       y: -0.350
-      z: 0.050
+      z: 0.000
     orientation:
       x: 0.0
       y: 0.0

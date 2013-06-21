@@ -3,6 +3,9 @@
 	<!-- Static Transform for the marker -->
 	<node pkg="tf" type="static_transform_publisher" name="marker_broadcaster" args="0 0 0.13 0 0 0 arm_link_5 marker_pos 100" />
 
+    <!-- Start the RAW Dashboard -->
+    <include file="$(find raw_bringup)/dashboard.launch" />
+
 	<!-- Start rviz -->
 	<node pkg="rviz" type="rviz" name="rviz" args="--d $(find hbrs_cartesian_trajectory_controller)/ros/config/ctc_debugging.vcg"/>
 
