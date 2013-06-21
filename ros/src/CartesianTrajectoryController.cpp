@@ -323,6 +323,12 @@ CartesianTrajectoryController::GetWayPoints(geometry_msgs::PoseStamped p1, geome
 	double dy = p1.pose.position.y + (p2.pose.position.y - p1.pose.position.y);
 	double dz = p1.pose.position.z + (p2.pose.position.z - p1.pose.position.z);
 
+	ROS_WARN_STREAM( "Calculated Slope" << " [" << 	way_points[x].pose.position.x << "," <<
+												 	way_points[y].pose.position.y << "," <<
+												 	way_points[z].pose.position.y << "]" );
+
+	ROS_WARN_STREAM( "Calculated Interval" << " [" << 	interval << "]" );
+
 	way_points.push_back(p1);
 	for (int i=0; i<number_of_way_points; i++)
 	{
@@ -340,7 +346,7 @@ CartesianTrajectoryController::GetWayPoints(geometry_msgs::PoseStamped p1, geome
 	{
 		ROS_WARN_STREAM( "SubWayPoint #" << x << " [" << way_points[x].pose.position.x << "," <<
 														 way_points[x].pose.position.y << "," <<
-														 way_points[x].pose.position.y << "]" );
+														 way_points[x].pose.position.z << "]" );
 	}
 
 	return way_points;
