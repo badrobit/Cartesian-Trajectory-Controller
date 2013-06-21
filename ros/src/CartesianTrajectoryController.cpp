@@ -62,6 +62,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 	ROS_ASSERT( m_arm_joint_names.size() != 0 );
 
 	ROS_INFO_STREAM( "Starting Trajectory for " << req.way_point_list.poses.size() << " waypoints" );
+	UpdateGripperPosition();
 
 	visualization_msgs::Marker goal_points, ideal_trajectory, real_trajectory, mid_points;
 	goal_points.header.frame_id = ideal_trajectory.header.frame_id = real_trajectory.header.frame_id = mid_points.header.frame_id = "/base_link";
@@ -107,6 +108,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 		ROS_INFO_STREAM( "Starting movement to WayPoint #" << i << " [" << next_pose.pose.position.x <<
 							", " << next_pose.pose.position.y << ", " << next_pose.pose.position.z << "] " );
 
+		ROS_DEBUG_STREAM( "CURRENT GRIPPER POSE: " << m_current_gripper_pose );
 		std::vector<geometry_msgs::PoseStamped> WayPointList = GetWayPoints( m_current_gripper_pose, next_pose );
 		ROS_DEBUG_STREAM( "WayPoints: " << WayPointList.size() );
 
@@ -293,6 +295,8 @@ CartesianTrajectoryController::UpdateGripperPosition()
 		ROS_ERROR("%s",ex.what());
 	}
 
+	m_current_gripper_pose.header.frame_id = "/base_link";
+	m_current_gripper_pose.header.stamp = ros::Time();
 	m_current_gripper_pose.pose.position.x = transform.getOrigin().x();
 	m_current_gripper_pose.pose.position.y = transform.getOrigin().y();
 	m_current_gripper_pose.pose.position.z = transform.getOrigin().z();
@@ -307,8 +311,10 @@ CartesianTrajectoryController::UpdateGripperPosition()
 std::vector<geometry_msgs::PoseStamped> 
 CartesianTrajectoryController::GetWayPoints(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2)
 {
-	ROS_ASSERT( p1.header.frame_id != p2.header.frame_id );
+	ROS_ASSERT( p1.header.frame_id == p2.header.frame_id );
 	ROS_INFO( "Calculating SubWaypoint Positions" );
+
+	ROS_WARN_STREAM( "P1: " << p1 );
 
 	std::vector<geometry_msgs::PoseStamped> way_points;
 
