@@ -76,18 +76,6 @@ private:
 							hbrs_srvs::ComputeTrajectory::Response &res );
 
 	/**
-	 * This function takes the completed trajectory plan that is created by calling the
-	 * ComputeTrajectory service and it attempts to execute the trajectory. It watches the progress
-	 * of the arm and will inform the caller of the service when the trajectory has been
-	 * successfully completed or if there was a problem executing the trajectory
-	 * (and what the error is).
-	 *
-	 * For a list of the possible errors please see the CartesianTrajectoryController.msg
-	 */
-	void ExecuteTrajectory( hbrs_srvs::ExecuteTrajectory::Request &req,
-							hbrs_srvs::ExecuteTrajectory::Response &res );
-
-	/**
 	 * This function handles the closing out of any ROS Publisher, Subscribers.
 	 */
 	void ShutDown();
@@ -110,9 +98,9 @@ private:
 	std::vector<geometry_msgs::PoseStamped> GetWayPoints(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2);
 
 protected:
-	static const double				m_arm_velocity_rate = 0.5;
+	static const double				m_arm_velocity_rate = 0.01;
 	static const double				m_arm_position_tolerance = 0.05;
-	static const int 				m_way_point_resolution = 0.5;
+	static const double 				m_way_point_resolution = 0.5;
 
 	ros::NodeHandle 					m_node_handler;
 
