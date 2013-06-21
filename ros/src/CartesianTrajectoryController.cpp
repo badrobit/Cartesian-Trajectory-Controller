@@ -323,9 +323,9 @@ CartesianTrajectoryController::GetWayPoints(geometry_msgs::PoseStamped p1, geome
 	double dy = p1.pose.position.y + (p2.pose.position.y - p1.pose.position.y);
 	double dz = p1.pose.position.z + (p2.pose.position.z - p1.pose.position.z);
 
-	ROS_WARN_STREAM( "Calculated Slope" << " [" << 	way_points[x].pose.position.x << "," <<
-												 	way_points[y].pose.position.y << "," <<
-												 	way_points[z].pose.position.y << "]" );
+	ROS_WARN_STREAM( "Calculated Slope" << " [" << 	dx << "," <<
+												 	dy << "," <<
+												 	dz << "]" );
 
 	ROS_WARN_STREAM( "Calculated Interval" << " [" << 	interval << "]" );
 
