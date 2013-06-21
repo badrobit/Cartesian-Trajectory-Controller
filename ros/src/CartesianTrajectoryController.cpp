@@ -31,9 +31,6 @@
 
 CartesianTrajectoryController::CartesianTrajectoryController( ros::NodeHandle i_node_handle ): m_node_handler( i_node_handle )
 {
-	m_sub_joint_states = m_node_handler.subscribe( "/joint_states", 1, &CartesianTrajectoryController::JointStateCallback, this );
-	ROS_INFO( "Subscribed to the Joint States publication." );
-
 	m_youbot_arm_velocity_publisher = m_node_handler.advertise<geometry_msgs::TwistStamped>("/hbrs_manipulation/arm_cart_control/cartesian_velocity_command", 1 );
 	ROS_INFO( "Started publishing Arm Velocity Commands" );
 
@@ -70,7 +67,6 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 	goal_points.header.frame_id = ideal_trajectory.header.frame_id = real_trajectory.header.frame_id = mid_points.header.frame_id = "/base_link";
 	goal_points.header.stamp = ideal_trajectory.header.stamp = real_trajectory.header.stamp = mid_points.header.stamp = ros::Time();
 	goal_points.ns = ideal_trajectory.ns = real_trajectory.ns = mid_points.ns = "ctc_visual_output";
-
 	goal_points.type = visualization_msgs::Marker::POINTS;
 	ideal_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
 	real_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
@@ -123,6 +119,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 
 		for( int x = 0; x < (int)WayPointList.size(); x ++ )
 		{
+			// reset our movement markers for each subgoal that we need to follow.
 			bool done_x_movement = false;
 			bool done_y_movement = false;
 			bool done_z_movement = false;
@@ -136,22 +133,26 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 			ROS_INFO_STREAM( "Starting movement to sub WayPoint #" << x << " [" << sub_goal.pose.position.x <<
 					", " << sub_goal.pose.position.y << ", " << sub_goal.pose.position.z << "] " );
 
-			/**
-			 * Get the positions and publish them.
-			 */
+			// Get the subgoal positions turn them into a point and publish them as an RVIZ marker.
 			geometry_msgs::Point p1;
 			p1.x = sub_goal.pose.position.x;
 			p1.y = sub_goal.pose.position.y;
 			p1.z = sub_goal.pose.position.z;
 			ideal_trajectory.points.push_back( p1 );
+
+			// This type of marker needs two values in x,y,z for the same point so we increase z by 0.3 so that we can
+			// see the marker when it is being visualized in RVIZ.
 			mid_points.points.push_back( p1 );
-			p1.z += 1.0;
+			p1.z += 0.3;
 			mid_points.points.push_back( p1 );
 			m_ctc_marker_publisher.publish( mid_points );
 			m_ctc_marker_publisher.publish( ideal_trajectory );
 
 			while(  !( done_x_movement && done_y_movement && done_z_movement )  )
 			{
+				// In the block below we get the updated position of the gripper and we publish it as a point along a
+				// trajectory which we then send to RVIZ. This allows for us to visualize where the arm thinks it is
+				// moving and we can plot it in relation to the ideal line that we are supposed to follow.
 				UpdateGripperPosition();
 				geometry_msgs::Point p2;
 				p2.x = m_current_gripper_pose.pose.position.x;
@@ -160,17 +161,21 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 				real_trajectory.points.push_back( p2 );
 				m_ctc_marker_publisher.publish( real_trajectory );
 
+				// Get the differences between where we are (m_current_gripper_pose) and where we want the gripper to be
+				// (sub_goal).
 				double x_difference = m_current_gripper_pose.pose.position.x - sub_goal.pose.position.x;
 				double y_difference = m_current_gripper_pose.pose.position.y - sub_goal.pose.position.y;
 				double z_difference = m_current_gripper_pose.pose.position.z - sub_goal.pose.position.z;
-
 				ROS_DEBUG_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
 				ROS_DEBUG_STREAM( "Done in x: " << done_x_movement << " y: " << done_y_movement << " z: " << done_z_movement );
 
+				// Normalize the velocities [http://en.wikipedia.org/wiki/Normalization_(statistics)]
 				double normalized_velocities = fabs( x_difference ) + fabs( y_difference ) + fabs( z_difference );
 
+				// Set the header value for the output velocities and then compute the actual velcoty that we want to
+				// set in each direction. Note this is being done in Cartesian space so we are setting an x,y,z speeds
+				// not seperate joint speeds.
 				m_arm_velocities.header.frame_id = "/base_link";
-
 				if( x_difference >= m_arm_position_tolerance )
 				{
 					m_arm_velocities.twist.linear.x = -( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
@@ -188,7 +193,6 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 					done_x_movement = true;
 				}
 
-
 				if( y_difference >= m_arm_position_tolerance )
 				{
 					m_arm_velocities.twist.linear.y = -( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
@@ -205,7 +209,6 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 					m_arm_velocities.twist.linear.y = 0;
 					done_y_movement = true;
 				}
-
 
 				if( z_difference >= m_arm_position_tolerance )
 				{
@@ -236,22 +239,6 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 	ROS_INFO_STREAM( "Finished following provided Trajectory" );
 	res.output_value.output_code = hbrs_msgs::CartesianTrajectoryController::SUCCESS;
 	return true;
-}
-
-void
-CartesianTrajectoryController::ShutDown()
-{
-
-}
-
-void
-CartesianTrajectoryController::JointStateCallback( sensor_msgs::JointStateConstPtr joints )
-{
-	for (unsigned i = 0; i < joints->position.size(); i++)
-	{
-		//UpdateGripperPosition();
-		//ROS_WARN_STREAM( "Joint Name: " << joints->name[i].c_str() << " Updated Position: " << joints->position[i] );
-	}
 }
 
 void

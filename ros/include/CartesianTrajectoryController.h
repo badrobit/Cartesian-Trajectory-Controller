@@ -76,16 +76,6 @@ private:
 							hbrs_srvs::ComputeTrajectory::Response &res );
 
 	/**
-	 * This function handles the closing out of any ROS Publisher, Subscribers.
-	 */
-	void ShutDown();
-
-	/**
-	 *
-	 */
-	void JointStateCallback( sensor_msgs::JointStateConstPtr joints );
-
-	/**
 	 *	This function pulls in the parameters for the KUKA youBot arm from the ROS parameter server.
 	 * If you are not launching this on the actual hardware you need to use the off line launch file
 	 * which will pull the parameters from the youBot URDF description and post them to the server
@@ -104,16 +94,10 @@ protected:
 
 	ros::NodeHandle 					m_node_handler;
 
-	ros::Subscriber 					m_sub_joint_states;
 	ros::Publisher						m_youbot_arm_velocity_publisher;
-
 	ros::Publisher 						m_ctc_marker_publisher;
 
 	ros::ServiceServer 					m_compute_trajectory_service;
-	ros::ServiceServer					m_execute_trajectory_service;
-
-	ros::ServiceClient					m_ik_service_client;
-
 	tf::TransformListener 				m_transform_listener;
 
 	geometry_msgs::PoseStamped			m_current_gripper_pose;
@@ -123,7 +107,6 @@ protected:
 	std::vector<double> 				m_upper_joint_limits;
 	std::vector<double> 				m_lower_joint_limits;
 	std::vector<bool> 					m_joint_positions_initialized;
-
 };
 
 #endif /* CARTESIANTRAJECTORYCONTROLLER_H_ */
