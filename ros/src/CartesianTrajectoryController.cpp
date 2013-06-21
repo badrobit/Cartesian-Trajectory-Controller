@@ -314,7 +314,7 @@ CartesianTrajectoryController::GetWayPoints(geometry_msgs::PoseStamped p1, geome
 	ROS_ASSERT( p1.header.frame_id == p2.header.frame_id );
 	ROS_INFO( "Calculating SubWaypoint Positions" );
 
-	ROS_WARN_STREAM( "P1: " << p1 );
+	ROS_DEBUG_STREAM( "P1: " << p1 );
 
 	std::vector<geometry_msgs::PoseStamped> way_points;
 
@@ -322,8 +322,9 @@ CartesianTrajectoryController::GetWayPoints(geometry_msgs::PoseStamped p1, geome
                     		pow( (p1.pose.position.y - p2.pose.position.y) ,2) +
                     		pow( (p1.pose.position.z - p2.pose.position.z) ,2) );
 
-	int number_of_way_points = ceil(distance/m_way_point_resolution);
-	float interval = 1/number_of_way_points;
+	//int number_of_way_points = ceil(distance/m_way_point_resolution);
+	int number_of_way_points = 3;
+	float interval = 1 / ( number_of_way_points + 1 );
 
 	double dx = p1.pose.position.x + (p2.pose.position.x - p1.pose.position.x);
 	double dy = p1.pose.position.y + (p2.pose.position.y - p1.pose.position.y);
