@@ -54,23 +54,34 @@ bool
 CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::Request &req,
 												  hbrs_srvs::ComputeTrajectory::Response &res )
 {
+	/**
+	 * The following statements are used to catch any conditions under which we should not be performing any of the
+	 * computations that follow:
+	 *
+	 * 1 - The waypoint list size is equal to zero.
+	 * 2 - The youbot arm is not initialized and able to be used (determined by there being no parameters available).
+	 */
 	ROS_ASSERT( req.way_point_list.poses.size() != 0 );
+	ROS_ASSERT( m_arm_joint_names.size() != 0 );
+
 	ROS_INFO_STREAM( "Starting Trajectory for " << req.way_point_list.poses.size() << " waypoints" );
 
-	visualization_msgs::Marker goal_points, ideal_trajectory, real_trajectory;
-	goal_points.header.frame_id = ideal_trajectory.header.frame_id = real_trajectory.header.frame_id = "/base_link";
-	goal_points.header.stamp = ideal_trajectory.header.stamp = real_trajectory.header.stamp = ros::Time();
-	goal_points.ns = ideal_trajectory.ns = real_trajectory.ns = "ctc_visual_output";
+	visualization_msgs::Marker goal_points, ideal_trajectory, real_trajectory, mid_points;
+	goal_points.header.frame_id = ideal_trajectory.header.frame_id = real_trajectory.header.frame_id = mid_points.header.frame_id = "/base_link";
+	goal_points.header.stamp = ideal_trajectory.header.stamp = real_trajectory.header.stamp = mid_points.header.stamp = ros::Time();
+	goal_points.ns = ideal_trajectory.ns = real_trajectory.ns = mid_points.ns = "ctc_visual_output";
 
 	goal_points.type = visualization_msgs::Marker::POINTS;
 	ideal_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
 	real_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
-	goal_points.action = ideal_trajectory.action = real_trajectory.action = visualization_msgs::Marker::ADD;
-	goal_points.pose.orientation.w = ideal_trajectory.pose.orientation.w = real_trajectory.pose.orientation.w = 1.0;
+	mid_points.type = visualization_msgs::Marker::LINE_LIST;
+	goal_points.action = ideal_trajectory.action = real_trajectory.action = mid_points.action = visualization_msgs::Marker::ADD;
+	goal_points.pose.orientation.w = ideal_trajectory.pose.orientation.w = real_trajectory.pose.orientation.w = mid_points.pose.orientation.w = 1.0;
 
 	goal_points.id = 0;
 	ideal_trajectory.id = 1;
 	real_trajectory.id = 2;
+	mid_points.id = 3;
 
 	goal_points.scale.x = m_arm_position_tolerance;
 	goal_points.scale.y = m_arm_position_tolerance;
@@ -78,6 +89,7 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 
 	ideal_trajectory.scale.x = 0.01;
 	real_trajectory.scale.x = 0.01;
+	mid_points.scale.x = 0.01;
 
 	goal_points.color.a = 1.0;
 	goal_points.color.g = 1.0;
@@ -85,110 +97,137 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 	ideal_trajectory.color.b = 1.0;
 	real_trajectory.color.a = 1.0;
 	real_trajectory.color.r = 1.0;
+	mid_points.color.a = 1.0;
+	mid_points.color.g = 1.0;
 
-	for( int i = 0; i < req.way_point_list.poses.size(); i ++ )
+	for( int i = 0; i < (int)req.way_point_list.poses.size(); i ++ )
 	{
-		bool done_x_movement = false;
-		bool done_y_movement = false;
-		bool done_z_movement = false;
-
-		ROS_ASSERT( m_arm_joint_names.size() != 0 );
-
 		geometry_msgs::PoseStamped next_pose;
+		next_pose.header = req.way_point_list.header;
 		next_pose.pose.position.x = req.way_point_list.poses[i].position.x;
 		next_pose.pose.position.y = req.way_point_list.poses[i].position.y;
 		next_pose.pose.position.z = req.way_point_list.poses[i].position.z;
 
 		ROS_INFO_STREAM( "Starting movement to WayPoint #" << i << " [" << next_pose.pose.position.x <<
-				", " << next_pose.pose.position.y << ", " << next_pose.pose.position.z << "] " );
+							", " << next_pose.pose.position.y << ", " << next_pose.pose.position.z << "] " );
+
+		std::vector<geometry_msgs::PoseStamped> WayPointList = GetWayPoints( m_current_gripper_pose, next_pose );
+		ROS_DEBUG_STREAM( "WayPoints: " << WayPointList.size() );
 
 		geometry_msgs::Point p;
 		p.x = next_pose.pose.position.x;
 		p.y = next_pose.pose.position.y;
 		p.z = next_pose.pose.position.z;
-
 		goal_points.points.push_back( p );
-		ideal_trajectory.points.push_back( p );
-
 		m_ctc_marker_publisher.publish( goal_points );
-		m_ctc_marker_publisher.publish( ideal_trajectory );
 
-		while(  !( done_x_movement && done_y_movement && done_z_movement )  )
+		for( int x = 0; x < (int)WayPointList.size(); x ++ )
 		{
-			UpdateGripperPosition();
+			bool done_x_movement = false;
+			bool done_y_movement = false;
+			bool done_z_movement = false;
+
+			geometry_msgs::PoseStamped sub_goal;
+			sub_goal.header = WayPointList[x].header;
+			sub_goal.pose.position.x = WayPointList[x].pose.position.x;
+			sub_goal.pose.position.y = WayPointList[x].pose.position.y;
+			sub_goal.pose.position.z = WayPointList[x].pose.position.z;
+
+			ROS_INFO_STREAM( "Starting movement to sub WayPoint #" << x << " [" << sub_goal.pose.position.x <<
+					", " << sub_goal.pose.position.y << ", " << sub_goal.pose.position.z << "] " );
+
+			/**
+			 * Get the positions and publish them.
+			 */
 			geometry_msgs::Point p1;
-			p1.x = m_current_gripper_pose.pose.position.x;
-			p1.y = m_current_gripper_pose.pose.position.y;
-			p1.z = m_current_gripper_pose.pose.position.z;
-			real_trajectory.points.push_back( p1 );
-			m_ctc_marker_publisher.publish( real_trajectory );
+			p1.x = sub_goal.pose.position.x;
+			p1.y = sub_goal.pose.position.y;
+			p1.z = sub_goal.pose.position.z;
+			ideal_trajectory.points.push_back( p1 );
+			mid_points.points.push_back( p1 );
+			p1.z += 1.0;
+			mid_points.points.push_back( p1 );
+			m_ctc_marker_publisher.publish( mid_points );
+			m_ctc_marker_publisher.publish( ideal_trajectory );
 
-			double x_difference = m_current_gripper_pose.pose.position.x - next_pose.pose.position.x;
-			double y_difference = m_current_gripper_pose.pose.position.y - next_pose.pose.position.y;
-			double z_difference = m_current_gripper_pose.pose.position.z - next_pose.pose.position.z;
-
-			ROS_DEBUG_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
-			ROS_DEBUG_STREAM( "Done in x: " << done_x_movement << " y: " << done_y_movement << " z: " << done_z_movement );
-
-			double normalized_velocities = fabs( x_difference ) + fabs( y_difference ) + fabs( z_difference );
-
-			m_arm_velocities.header.frame_id = "/base_link";
-
-			if( x_difference >= m_arm_position_tolerance )
+			while(  !( done_x_movement && done_y_movement && done_z_movement )  )
 			{
-				m_arm_velocities.twist.linear.x = -( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
-				done_x_movement = false;
-			}
-			else if( x_difference <= -m_arm_position_tolerance )
-			{
-				m_arm_velocities.twist.linear.x = ( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
-				done_x_movement = false;
-			}
-			else
-			{
-				ROS_DEBUG( "STOPPING X" );
-				m_arm_velocities.twist.linear.x = 0;
-				done_x_movement = true;
-			}
+				UpdateGripperPosition();
+				geometry_msgs::Point p2;
+				p2.x = m_current_gripper_pose.pose.position.x;
+				p2.y = m_current_gripper_pose.pose.position.y;
+				p2.z = m_current_gripper_pose.pose.position.z;
+				real_trajectory.points.push_back( p2 );
+				m_ctc_marker_publisher.publish( real_trajectory );
+
+				double x_difference = m_current_gripper_pose.pose.position.x - sub_goal.pose.position.x;
+				double y_difference = m_current_gripper_pose.pose.position.y - sub_goal.pose.position.y;
+				double z_difference = m_current_gripper_pose.pose.position.z - sub_goal.pose.position.z;
+
+				ROS_DEBUG_STREAM( "Difference = [ " << x_difference << " , " << y_difference << " , " << z_difference << " ]" );
+				ROS_DEBUG_STREAM( "Done in x: " << done_x_movement << " y: " << done_y_movement << " z: " << done_z_movement );
+
+				double normalized_velocities = fabs( x_difference ) + fabs( y_difference ) + fabs( z_difference );
+
+				m_arm_velocities.header.frame_id = "/base_link";
+
+				if( x_difference >= m_arm_position_tolerance )
+				{
+					m_arm_velocities.twist.linear.x = -( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
+					done_x_movement = false;
+				}
+				else if( x_difference <= -m_arm_position_tolerance )
+				{
+					m_arm_velocities.twist.linear.x = ( fabs(x_difference) / normalized_velocities ) * m_arm_velocity_rate;
+					done_x_movement = false;
+				}
+				else
+				{
+					ROS_DEBUG( "STOPPING X" );
+					m_arm_velocities.twist.linear.x = 0;
+					done_x_movement = true;
+				}
 
 
-			if( y_difference >= m_arm_position_tolerance )
-			{
-				m_arm_velocities.twist.linear.y = -( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
-				done_y_movement = false;
-			}
-			else if( y_difference <= -m_arm_position_tolerance )
-			{
-				m_arm_velocities.twist.linear.y = ( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
-				done_y_movement = false;
-			}
-			else
-			{
-				ROS_DEBUG( "STOPPING Y" );
-				m_arm_velocities.twist.linear.y = 0;
-				done_y_movement = true;
-			}
+				if( y_difference >= m_arm_position_tolerance )
+				{
+					m_arm_velocities.twist.linear.y = -( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
+					done_y_movement = false;
+				}
+				else if( y_difference <= -m_arm_position_tolerance )
+				{
+					m_arm_velocities.twist.linear.y = ( fabs(y_difference) / normalized_velocities ) * m_arm_velocity_rate;
+					done_y_movement = false;
+				}
+				else
+				{
+					ROS_DEBUG( "STOPPING Y" );
+					m_arm_velocities.twist.linear.y = 0;
+					done_y_movement = true;
+				}
 
 
-			if( z_difference >= m_arm_position_tolerance )
-			{
-				m_arm_velocities.twist.linear.z = -( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
-				done_z_movement = false;
-			}
-			else if( z_difference <= -m_arm_position_tolerance )
-			{
-				m_arm_velocities.twist.linear.z = ( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
-				done_z_movement = false;
-			}
-			else
-			{
-				ROS_DEBUG( "STOPPING Z" );
-				m_arm_velocities.twist.linear.z = 0;
-				done_z_movement = true;
-			}
+				if( z_difference >= m_arm_position_tolerance )
+				{
+					m_arm_velocities.twist.linear.z = -( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
+					done_z_movement = false;
+				}
+				else if( z_difference <= -m_arm_position_tolerance )
+				{
+					m_arm_velocities.twist.linear.z = ( fabs(z_difference) / normalized_velocities ) * m_arm_velocity_rate;
+					done_z_movement = false;
+				}
+				else
+				{
+					ROS_DEBUG( "STOPPING Z" );
+					m_arm_velocities.twist.linear.z = 0;
+					done_z_movement = true;
+				}
 
-			m_youbot_arm_velocity_publisher.publish( m_arm_velocities );
-			ros::Duration(0.05).sleep();
+				m_youbot_arm_velocity_publisher.publish( m_arm_velocities );
+				ros::Duration(0.05).sleep();
+			}
+			ROS_INFO_STREAM( "Finished with SubWayPoint #" << x << " of: " << WayPointList.size() );
 		}
 
 		ROS_INFO_STREAM( "Finished with WayPoint #" << i << " moving to next WayPoint" );
@@ -197,14 +236,6 @@ CartesianTrajectoryController::ComputeTrajectory( hbrs_srvs::ComputeTrajectory::
 	ROS_INFO_STREAM( "Finished following provided Trajectory" );
 	res.output_value.output_code = hbrs_msgs::CartesianTrajectoryController::SUCCESS;
 	return true;
-}
-
-void
-CartesianTrajectoryController::ExecuteTrajectory( hbrs_srvs::ExecuteTrajectory::Request &req,
-												  hbrs_srvs::ExecuteTrajectory::Response &res )
-{
-
-
 }
 
 void
@@ -287,21 +318,23 @@ CartesianTrajectoryController::UpdateGripperPosition()
 }
 
 std::vector<geometry_msgs::PoseStamped> 
-GetWayPoints(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2)
+CartesianTrajectoryController::GetWayPoints(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2)
 {
-	ROS_DEBUG( "Calculating Waypoint Positions" );
+	ROS_ASSERT( p1.header.frame_id != p2.header.frame_id );
+	ROS_INFO( "Calculating SubWaypoint Positions" );
 
 	std::vector<geometry_msgs::PoseStamped> way_points;
 
-	float distance = sqrt( 	pow( (p1.pose.position.x - p2.pose.position.x) ,2) + 
+	float distance = sqrt( pow( (p1.pose.position.x - p2.pose.position.x) ,2) +
                     		pow( (p1.pose.position.y - p2.pose.position.y) ,2) +
                     		pow( (p1.pose.position.z - p2.pose.position.z) ,2) );
+
 	int number_of_way_points = ceil(distance/m_way_point_resolution);
 	float interval = 1/number_of_way_points;
 
-	dx = p1.pose.position.x + (p2.pose.position.x - p1.pose.position.x);
-	dy = p1.pose.position.y + (p2.pose.position.y - p1.pose.position.y);
-	dz = p1.pose.position.z + (p2.pose.position.z - p1.pose.position.z);
+	double dx = p1.pose.position.x + (p2.pose.position.x - p1.pose.position.x);
+	double dy = p1.pose.position.y + (p2.pose.position.y - p1.pose.position.y);
+	double dz = p1.pose.position.z + (p2.pose.position.z - p1.pose.position.z);
 
 	way_points.push_back(p1);
 	for (int i=0; i<number_of_way_points; i++)
@@ -315,6 +348,13 @@ GetWayPoints(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2)
 		way_points.push_back(next_point);
 	}
 	way_points.push_back(p2);
+
+	for( int x = 0; x < (int)way_points.size(); x ++ )
+	{
+		ROS_WARN_STREAM( "SubWayPoint #" << x << " [" << way_points[x].pose.position.x << "," <<
+														 way_points[x].pose.position.y << "," <<
+														 way_points[x].pose.position.y << "]" );
+	}
 
 	return way_points;
 }
