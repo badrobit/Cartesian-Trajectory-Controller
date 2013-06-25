@@ -26,7 +26,7 @@ In order to start the HBRS Cartesian Trajectory Controller you need to call the 
 `$ rosservice call /compute_trajectory [waypoints]`
 
 ### WayPoint List
-The input arguments take in a PoseArray which lists out in order all of the poses that you want to reach using the arm. 
+The input arguments take in a [PoseArray](http://www.ros.org/doc/api/geometry_msgs/html/msg/PoseArray.html) which lists out in order all of the poses that you want to reach using the arm. 
 
 ## Environment Variables
 This requires the following environment variables to be present in your bashrc file: 
