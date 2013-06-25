@@ -4,7 +4,7 @@ HBRS Cartesian Trajectory Controller
 This ROS node is designed to take a series of points along a trajectory that you want your robot arm to be able to follow. It will compute a path from the current position of the arm to the desired goal and attempt to follow it as closely as possible. 
 
 ### Available Services
-* `/compute_trajectory`
+* `/compute_trajectory` This service will take in a series of WayPoints (must be more than zero) and it will attempt to draw a straight line between the current gripper and the series of waypoints. It is currently setup so that we will allow the gripper to finish to within a tolerance of `0.003m` or `3mm`.
 
 ## Launching It Simulation:
 
